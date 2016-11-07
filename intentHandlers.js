@@ -24,8 +24,8 @@ var registerIntentHandlers = function (intentHandlers, skillContext) {
                 }
                 speechOutput += '.';
                 if (skillContext.needMoreHelp) {
-                    speechOutput += '. You can give a player points, add another player, reset all players or exit. What would you like?';
-                    var repromptText = 'You can give a player points, add another player, reset all players or exit. What would you like?';
+                    speechOutput += '. You can give a player Initiative, add another player, reset all players or exit. What would you like?';
+                    var repromptText = 'You can give a player Initiative, add another player, reset all players or exit. What would you like?';
                     response.ask(speechOutput, repromptText);
                 } else {
                     response.tell(speechOutput);
@@ -78,7 +78,7 @@ var registerIntentHandlers = function (intentHandlers, skillContext) {
     };
 
     intentHandlers.AddScoreIntent = function (intent, session, response) {
-        //give a player points, ask additional question if slot values are missing.
+        //give a player Initiative, ask additional question if slot values are missing.
         var playerName = textHelper.getPlayerName(intent.slots.PlayerName.value),
             score = intent.slots.ScoreNumber,
             scoreValue;
@@ -89,7 +89,7 @@ var registerIntentHandlers = function (intentHandlers, skillContext) {
         scoreValue = parseInt(score.value);
         if (isNaN(scoreValue)) {
             console.log('Invalid score value = ' + score.value);
-            response.ask('sorry, I did not hear the points, please say that again', 'please say the points again');
+            response.ask('sorry, I did not hear the Initiative, please say that again', 'please say the Initiative again');
             return;
         }
         storage.loadGame(session, function (currentGame) {
@@ -130,6 +130,48 @@ var registerIntentHandlers = function (intentHandlers, skillContext) {
         });
     };
 
+    intentHandlers.NewRoundIntent = function (intent, session, response) {
+        //Sets the player turn order so that it isn't altered during combat actions
+        storage.loadGame(session, function (currentGame) {
+            var playerOrder = [],
+                continueSession,
+                speechOutput = '',
+                turnboard = '';
+            if (currentGame.data.players.length === 0) {
+                response.tell('There are no Exalted in the game.');
+                return;
+            }
+            currentGame.data.players.forEach(function (player) {
+                playerOrder.push({
+                    score: currentGame.data.scores[player],
+                    player: player
+                });
+            });
+            playerOrder.sort(function (p1, p2) {
+                return p2.score - p1.score;
+            });
+            playerOrder.forEach(function (playerScore, index) {
+                if (index === 0) {
+                    speechOutput += playerScore.player + ' has ' + playerScore.score + ' Initiative';
+                    playerScore.order = index;
+                } else if (index === playerOrder.length - 1) {
+                    speechOutput += 'And ' + playerScore.player + ' has ' + playerScore.score;
+                    playerScore.order = index;
+                } else {
+                    speechOutput += playerScore.player + ', ' + playerScore.score;
+                    playerScore.order = index;
+                }
+                speechOutput += '. ';
+                turnboard += 'No.' + (index + 1) + ' _ ' + playerScore.player + ' : ' + playerScore.score + '\n';
+            });
+            response.tellWithCard(speechOutput, "turnboard", turnboard);
+        });
+    };
+/*
+    intentHandlers.TellOrderIntent = function (intent, session, response) {
+        var
+    }; //End of Tell Order Intent */
+
     intentHandlers.TellScoresIntent = function (intent, session, response) {
         //tells the scores in the leaderboard and send the result in card.
         storage.loadGame(session, function (currentGame) {
@@ -138,7 +180,7 @@ var registerIntentHandlers = function (intentHandlers, skillContext) {
                 speechOutput = '',
                 leaderboard = '';
             if (currentGame.data.players.length === 0) {
-                response.tell('Nobody has joined the game.');
+                response.tell('There are no Exalted in the game.');
                 return;
             }
             currentGame.data.players.forEach(function (player) {
@@ -152,10 +194,7 @@ var registerIntentHandlers = function (intentHandlers, skillContext) {
             });
             sortedPlayerScores.forEach(function (playerScore, index) {
                 if (index === 0) {
-                    speechOutput += playerScore.player + ' has ' + playerScore.score + 'point';
-                    if (playerScore.score > 1) {
-                        speechOutput += 's';
-                    }
+                    speechOutput += playerScore.player + ' has ' + playerScore.score + ' Initiative';
                 } else if (index === sortedPlayerScores.length - 1) {
                     speechOutput += 'And ' + playerScore.player + ' has ' + playerScore.score;
                 } else {
@@ -186,7 +225,7 @@ var registerIntentHandlers = function (intentHandlers, skillContext) {
 
     intentHandlers['AMAZON.CancelIntent'] = function (intent, session, response) {
         if (skillContext.needMoreHelp) {
-            response.tell('Okay.  Whenever you\'re ready, you can start giving points to the players in your game.');
+            response.tell('Okay.  Whenever you\'re ready, you can start giving Initiative to the players in your game.');
         } else {
             response.tell('');
         }
@@ -194,7 +233,7 @@ var registerIntentHandlers = function (intentHandlers, skillContext) {
 
     intentHandlers['AMAZON.StopIntent'] = function (intent, session, response) {
         if (skillContext.needMoreHelp) {
-            response.tell('Okay.  Whenever you\'re ready, you can start giving points to the players in your game.');
+            response.tell('Okay.  Whenever you\'re ready, you can start giving Initiative to the players in your game.');
         } else {
             response.tell('');
         }

@@ -13,7 +13,8 @@ var storage = (function () {
         } else {
             this.data = {
                 players: [],
-                scores: {}
+                scores: {},
+                order: {}
             };
         }
         this._session = session;
