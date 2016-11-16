@@ -133,6 +133,44 @@ var registerIntentHandlers = function (intentHandlers, skillContext) {
     intentHandlers.NewRoundIntent = function (intent, session, response) {
         //Sets the player turn order so that it isn't altered during combat actions
         storage.loadGame(session, function (currentGame) {
+            var playerScore = [],
+                continueSession,
+                speechOutput = '',
+                turnboard = '';
+            if (currentGame.data.players.length === 0) {
+                response.tell('There are no Exalted in the game.');
+                return;
+            }
+            currentGame.data.players.forEach(function (player) {
+                playerScore.push({
+                    score: currentGame.data.scores[player],
+                    player: player
+                });
+            });
+            playerScore.sort(function (p1, p2) {
+                return p2.score - p1.score;
+            });
+            playerScore.forEach(function (playeScore, index) {
+                if (index === 0) {
+                    speechOutput += playerScore.player + ' has ' + playerScore.score + ' Initiative';
+                    playerScore.order = index;
+                } else if (index === playerOrder.length - 1) {
+                    speechOutput += 'And ' + playerScore.player + ' has ' + playerScore.score;
+                    playerScore.order = index;
+                } else {
+                    speechOutput += playerScore.player + ', ' + playerScore.score;
+                    playerScore.order = index;
+                }
+                speechOutput += '. ';
+                turnboard += 'No.' + (index + 1) + ' _ ' + playerScore.player + ' : ' + playerScore.score + '\n';
+            });
+            response.tellWithCard(speechOutput, "turnboard", turnboard);
+        });
+    };
+
+    intentHandlers.TellOrderIntent = function (intent, session, response) {
+        //Tells the player turn order determined at the start of a round
+        storage.loadGame(session, function (currentGame) {
             var playerOrder = [],
                 continueSession,
                 speechOutput = '',
@@ -151,26 +189,19 @@ var registerIntentHandlers = function (intentHandlers, skillContext) {
                 return p2.score - p1.score;
             });
             playerOrder.forEach(function (playerScore, index) {
-                if (index === 0) {
+                if (playerOrder.order === 0) {
                     speechOutput += playerScore.player + ' has ' + playerScore.score + ' Initiative';
-                    playerScore.order = index;
-                } else if (index === playerOrder.length - 1) {
+                } else if (index === playerOrder.order - 1) {
                     speechOutput += 'And ' + playerScore.player + ' has ' + playerScore.score;
-                    playerScore.order = index;
                 } else {
                     speechOutput += playerScore.player + ', ' + playerScore.score;
-                    playerScore.order = index;
-                }
+                };
                 speechOutput += '. ';
                 turnboard += 'No.' + (index + 1) + ' _ ' + playerScore.player + ' : ' + playerScore.score + '\n';
             });
             response.tellWithCard(speechOutput, "turnboard", turnboard);
         });
-    };
-/*
-    intentHandlers.TellOrderIntent = function (intent, session, response) {
-        var
-    }; //End of Tell Order Intent */
+    }; //End of Tell Order Intent
 
     intentHandlers.TellScoresIntent = function (intent, session, response) {
         //tells the scores in the leaderboard and send the result in card.
