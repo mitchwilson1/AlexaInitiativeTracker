@@ -4,6 +4,8 @@
 var textHelper = require('./textHelper'),
     storage = require('./storage');
 
+var orderOfPlayers = [];
+
 var registerIntentHandlers = function (intentHandlers, skillContext) {
     intentHandlers.NewGameIntent = function (intent, session, response) {
         //reset scores for all existing players
@@ -58,6 +60,7 @@ var registerIntentHandlers = function (intentHandlers, skillContext) {
             speechOutput = newPlayerName + ' has joined your game. ';
             currentGame.data.players.push(newPlayerName);
             currentGame.data.scores[newPlayerName] = 0;
+            currentGame.data.order[newPlayerName] = 0;
             if (skillContext.needMoreHelp) {
                 if (currentGame.data.players.length == 1) {
                     speechOutput += 'You can say, I am Done Adding Players. Now who\'s your next player?';
@@ -131,44 +134,102 @@ var registerIntentHandlers = function (intentHandlers, skillContext) {
     };
 
     intentHandlers.NewRoundIntent = function (intent, session, response) {
-        //Sets the player turn order so that it isn't altered during combat actions
         storage.loadGame(session, function (currentGame) {
-            var playerScore = [],
+            var sortedPlayerScores = [],
                 continueSession,
                 speechOutput = '',
-                turnboard = '';
+                leaderboard = '';
             if (currentGame.data.players.length === 0) {
                 response.tell('There are no Exalted in the game.');
                 return;
             }
             currentGame.data.players.forEach(function (player) {
-                playerScore.push({
+                sortedPlayerScores.push({
                     score: currentGame.data.scores[player],
                     player: player
                 });
             });
-            playerScore.sort(function (p1, p2) {
+            sortedPlayerScores.sort(function (p1, p2) {
                 return p2.score - p1.score;
             });
-            playerScore.forEach(function (playeScore, index) {
+
+
+            sortedPlayerScores.forEach(function (playerScore, index) {
                 if (index === 0) {
-                    speechOutput += playerScore.player + ' has ' + playerScore.score + ' Initiative';
+                    speechOutput += playerScore.player + ' has ' + playerScore.score + ' Initiative. ';
                     playerScore.order = index;
-                } else if (index === playerOrder.length - 1) {
+                    speechOutput += playerScore.order;
+                    orderOfPlayers[index] = playerScore.player;
+                } else if (index === sortedPlayerScores.length - 1) {
                     speechOutput += 'And ' + playerScore.player + ' has ' + playerScore.score;
                     playerScore.order = index;
+                    speechOutput += playerScore.order;
+                    orderOfPlayers[index] = playerScore.player;
                 } else {
                     speechOutput += playerScore.player + ', ' + playerScore.score;
                     playerScore.order = index;
+                    speechOutput += playerScore.order;
                 }
-                speechOutput += '. ';
-                turnboard += 'No.' + (index + 1) + ' _ ' + playerScore.player + ' : ' + playerScore.score + '\n';
+                leaderboard += 'No.' + (index + 1) + ' - ' + playerScore.player + ' : ' + playerScore.score + '\n';
             });
-            response.tellWithCard(speechOutput, "turnboard", turnboard);
+            response.tellWithCard(speechOutput, "Leaderboard", leaderboard);
         });
     };
 
     intentHandlers.TellOrderIntent = function (intent, session, response) {
+
+        //tells the scores in the leaderboard and send the result in card.
+        storage.loadGame(session, function (currentGame) {
+            var sortedPlayerScores = [],
+                continueSession,
+                speechOutput = '',
+                leaderboard = '';
+            if (currentGame.data.players.length === 0) {
+                response.tell('There are no Exalted in the game.');
+                return;
+            }
+            currentGame.data.players.forEach(function (player) {
+                sortedPlayerScores.push({
+                    score: currentGame.data.scores[player],
+                    player: player
+                });
+            });
+            sortedPlayerScores.sort(function (p1, p2) {
+                return p2.score - p1.score;
+            });
+
+            for (var j = 0; j < orderOfPlayers.length; j++ ) {
+                speechOutput += orderOfPlayers[j];
+                if (j == orderOfPlayers.length) {
+                    speechOutput += orderOfPlayers.length;
+                    speechOutput += ' Begin new round.';
+                }
+                else {
+                    speechOutput += ' followed by ' + orderOfPlayers.length ;
+                }
+            };
+            /*
+            sortedPlayerScores.forEach(function (playerScore, index) {
+                if (index === 0) {
+                    speechOutput += playerScore.player + ' has ' + playerScore.score + ' Initiative';
+                } else if (index === sortedPlayerScores.length - 1) {
+                    speechOutput += 'And ' + playerScore.player + ' has ' + playerScore.score;
+                } else {
+                    speechOutput += playerScore.player + ', ' + playerScore.score;
+                }
+                speechOutput += '. ';
+                leaderboard += 'No.' + (index + 1) + ' - ' + playerScore.player + ' : ' + playerScore.score + '\n';
+            }); */
+            response.tellWithCard(speechOutput, "Leaderboard", leaderboard);
+        });
+    };
+
+
+
+
+/*
+
+
         //Tells the player turn order determined at the start of a round
         storage.loadGame(session, function (currentGame) {
             var playerOrder = [],
@@ -182,7 +243,8 @@ var registerIntentHandlers = function (intentHandlers, skillContext) {
             currentGame.data.players.forEach(function (player) {
                 playerOrder.push({
                     score: currentGame.data.scores[player],
-                    player: player
+                    player: player,
+                    order: order
                 });
             });
             playerOrder.sort(function (p1, p2) {
@@ -190,18 +252,22 @@ var registerIntentHandlers = function (intentHandlers, skillContext) {
             });
             playerOrder.forEach(function (playerScore, index) {
                 if (playerOrder.order === 0) {
-                    speechOutput += playerScore.player + ' has ' + playerScore.score + ' Initiative';
+                    speechOutput += playerOrder.player + ' has ' + playerOrder.score + ' Initiative';
                 } else if (index === playerOrder.order - 1) {
-                    speechOutput += 'And ' + playerScore.player + ' has ' + playerScore.score;
+                    speechOutput += 'And ' + playerScore.player + ' has ' + playerOrder.score;
                 } else {
-                    speechOutput += playerScore.player + ', ' + playerScore.score;
+                    speechOutput += playerOrder.player + ', ' + playerOrder.score;
                 };
                 speechOutput += '. ';
-                turnboard += 'No.' + (index + 1) + ' _ ' + playerScore.player + ' : ' + playerScore.score + '\n';
+                turnboard += 'No.' + (index + 1) + ' _ ' + playerOrder.player + ' : ' + playerOrder.score + '\n';
             });
             response.tellWithCard(speechOutput, "turnboard", turnboard);
         });
     }; //End of Tell Order Intent
+
+    */
+
+
 
     intentHandlers.TellScoresIntent = function (intent, session, response) {
         //tells the scores in the leaderboard and send the result in card.
