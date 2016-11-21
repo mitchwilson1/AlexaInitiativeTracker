@@ -8,12 +8,14 @@ var textHelper = (function () {
     return {
         completeHelp: 'Here\'s some things you can say,'
         + ' add john.'
-        + ' give john 5 points.'
+        + ' give john 5 Initiative.'
+        + ' take 5 Initiative from john'
         + ' tell me the score.'
+        + ' tell me the player order'
         + ' new game.'
         + ' reset.'
         + ' and exit.',
-        nextHelp: 'You can give a player points, add a player, get the current score, or say help. What would you like?',
+        nextHelp: 'You can give or take Initiative from a player, add a player, get the current score, or say help. What would you like?',
 
         getPlayerName: function (recognizedPlayerName) {
             if (!recognizedPlayerName) {
